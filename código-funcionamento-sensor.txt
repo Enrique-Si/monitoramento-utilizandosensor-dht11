@@ -1,0 +1,63 @@
+import dht
+import machine
+import time
+import urequests
+import network
+
+# Conectar Wi-Fi e ThingSpeak
+def connect_wifi(ssid, password):
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    if not wlan.isconnected():
+        print('Conectando ao Wi-Fi...')
+        wlan.connect(ssid, password)
+        while not wlan.isconnected():
+            time.sleep(1)
+            print('.', end='')
+    print('Conectado ao Wi-Fi! Configuração de rede:', wlan.ifconfig())
+
+ssid = '----------'  
+password = '---------' 
+
+connect_wifi(ssid, password)
+
+# API do ThingSpeak
+thingspeak_key = "------------"
+URL_BASE = "---------------" + thingspeak_key
+
+
+d = dht.DHT11(machine.Pin(4))
+rele_pin = machine.Pin(5, machine.Pin.OUT)
+
+while True:
+    d.measure()
+    temperatura = d.temperature()
+    umidade = d.humidity()
+
+    print("Temperatura={} Umididade={}".format(temperatura, umidade))
+
+   
+    url = URL_BASE + "&field1=" + str(temperatura) + "&field2=" + str(umidade)
+    
+
+    print("URL para enviar dados:", url)
+
+    # Enviar dados para o ThingSpeak
+    try:
+        response = urequests.get(url)
+        print("Dados enviados ao ThingSpeak, status:", response.status_code)
+        response.close()
+    except Exception as e:
+        print("Erro ao enviar dados:", e)
+
+    # Condições para o relé funcionar
+    if temperatura > 31 or umidade > 70:
+        rele_pin.value(1)  
+        print("Relé ligado")
+    else:
+        rele_pin.value(0)  
+        print("Relé desligado")
+
+    # Tempo de medição do rele
+    time.sleep(5)
+
